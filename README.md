@@ -83,3 +83,9 @@ only for turning that data into bytes and adding HTTP headers:
 Rust, JavaScript, JVM, or future Kotoba-native hosts can all perform that byte
 encoding, but they should not redefine tags, envelope keys, tiering, or Datomic
 semantics.
+
+## Test
+
+```bash
+clojure -M:test
+```
