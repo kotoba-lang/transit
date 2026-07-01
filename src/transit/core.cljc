@@ -8,6 +8,16 @@
 (def media-type-json "application/transit+json")
 (def media-type-msgpack "application/transit+msgpack")
 
+(def office-family :kotoba.protocol/office)
+(def office-envelope-version 1)
+(def office-resource-kinds
+  #{:slides/deck
+    :sheets/workbook
+    :docs/document
+    :office/update
+    :office/selection
+    :office/presence})
+
 (defn transit-json? [content-type]
   (= media-type-json
      (some-> content-type
@@ -96,3 +106,35 @@
   {:content-type media-type-json
    :accept media-type-json
    :body (envelope-body body)})
+
+(defn office-envelope
+  "Wrap a Slides/Sheets/Docs payload with Kotoba's shared Transit wire envelope.
+
+  `resource-kind` is an application resource such as :slides/deck,
+  :sheets/workbook, or :docs/document. Hosts serialize `:body` as JSON bytes and
+  use the returned Transit media headers unchanged."
+  ([resource-kind payload] (office-envelope resource-kind payload {}))
+  ([resource-kind payload opts]
+   (when-not (contains? office-resource-kinds resource-kind)
+     (throw (ex-info "unknown Kotoba office resource kind"
+                     {:kind resource-kind
+                      :allowed office-resource-kinds})))
+   {:content-type media-type-json
+    :accept media-type-json
+    :body (write-json
+           (cond-> {:kotoba.protocol/family office-family
+                    :kotoba.protocol/version office-envelope-version
+                    :kotoba.resource/kind resource-kind
+                    :kotoba.resource/payload payload}
+             (:request-id opts) (assoc :kotoba.request/id (:request-id opts))
+             (:cid opts) (assoc :kotoba.resource/cid (:cid opts))
+             (:operation opts) (assoc :kotoba.operation/kind (:operation opts))))}))
+
+(defn read-office-envelope-body
+  "Read the JSON-compatible `:body` from office-envelope back to EDN."
+  [body]
+  (let [decoded (read-json body)]
+    (when (not= office-family (:kotoba.protocol/family decoded))
+      (throw (ex-info "not a Kotoba office Transit envelope"
+                      {:family (:kotoba.protocol/family decoded)})))
+    decoded))
