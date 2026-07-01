@@ -1,12 +1,18 @@
 # kotoba-lang/transit
 
-Transit JSON for Kotoba's tier-1 Datomic wire.
+Transit JSON for Kotoba's internal app/resource wire protocol.
 
 Kotoba's data model is EDN/Datomic: keywords, symbols, sets, tagged literals,
 and immutable datoms are semantic values, not plain JSON strings. This library
 defines the shared CLJC Transit layer used by Kotoba browser, JVM, bb, and
 server-side tooling. It is the authoritative Transit implementation for Kotoba
 and intentionally has no Rust dependency.
+
+Transit JSON is the default wire projection for Kotoba-owned APIs. EDN remains
+the in-memory and file authoring shape; CID, signed manifests, and lockfiles
+remain the package/storage integrity boundary. Plain JSON, OpenAPI, GraphQL,
+ActivityStreams, XRPC, and provider-specific REST are adapter surfaces over the
+Transit/EDN model.
 
 ## Non-goals
 
@@ -21,6 +27,7 @@ shape of Kotoba Transit values is defined here in CLJC.
 
 Tier 1:
 
+- Kotoba app/resource envelopes
 - Datomic API: transact, q, pull, datoms, entity, history, tx, sync
 - EDN/Datomic semantics
 - Transit JSON HTTP media type: `application/transit+json`
@@ -56,6 +63,8 @@ This repo intentionally starts as a small CLJC surface:
 - `write-json`: EDN values to Transit JSON compatible values.
 - `read-json`: Transit JSON compatible values back to EDN values.
 - `datomic-envelope`: standard HTTP envelope metadata for Kotoba Datomic APIs.
+- `office-envelope`: standard Transit envelope for Slides, Sheets, Docs, and
+  related app resources.
 
 The next layer can add binary Transit MessagePack and streaming readers without
 changing callers.
