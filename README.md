@@ -1,27 +1,31 @@
 # kotoba-lang/transit
 
-Transit JSON for Kotoba's internal app/resource wire protocol.
+Plain JSON envelope helpers for Kotoba's internal app/resource wire protocol.
 
-Kotoba's data model is EDN/Datomic: keywords, symbols, sets, tagged literals,
-and immutable datoms are semantic values, not plain JSON strings. This library
-defines the shared CLJC Transit layer used by Kotoba browser, JVM, bb, and
-server-side tooling. It is the authoritative Transit implementation for Kotoba
-and intentionally has no Rust dependency.
+Kotoba's data model is EDN/Datomic: keywords, symbols, sets, and immutable
+datoms are semantic values, not plain JSON strings. This library defines the
+shared CLJC envelope layer used by Kotoba browser, JVM, bb, and server-side
+tooling. It intentionally has no Rust dependency and no bespoke wire tag
+scheme — the wire shape is web-standard JSON, transported over ordinary HTTP
+(and, where already adopted at the transport layer, HTTP/2, HTTP/3/QUIC, or
+WebTransport; see `kotoba-lang/net`, `kotoba-lang/murakumo`, `kotoba-lang/rt`).
 
-Transit JSON is the default wire projection for Kotoba-owned APIs. EDN remains
-the in-memory and file authoring shape; CID, signed manifests, and lockfiles
-remain the package/storage integrity boundary. Plain JSON, OpenAPI, GraphQL,
-ActivityStreams, XRPC, and provider-specific REST are adapter surfaces over the
-Transit/EDN model.
+Plain JSON (optionally gzip-compressed) is the default wire projection for
+Kotoba-owned APIs. EDN remains the in-memory and file authoring shape; CID,
+signed manifests, and lockfiles remain the package/storage integrity
+boundary. This is a deliberately lossy projection: keywords/symbols become
+bare strings and sets/lists become JSON arrays, with no reader tags to
+recover exact EDN type identity. See `ADR-kotoba-json-wire-protocol.md`
+(supersedes `ADR-kotoba-transit-wire-protocol.md`) in `kotoba-lang/kotoba-lang`.
 
 ## Non-goals
 
-- No Rust source of truth for Transit semantics.
-- No host-specific object model in the protocol layer.
+- No Transit tag scheme, no `application/transit+json` media type.
+- No host-specific object model in the envelope layer.
 - No independent SPARQL/Cypher/GraphQL persistence semantics.
 
-Hosts may provide byte encoders, HTTP clients, or storage adapters, but the
-shape of Kotoba Transit values is defined here in CLJC.
+Hosts may provide byte encoders, HTTP clients, gzip compression, or storage
+adapters, but the shape of Kotoba's JSON envelopes is defined here in CLJC.
 
 ## Tiering
 
@@ -30,7 +34,7 @@ Tier 1:
 - Kotoba app/resource envelopes
 - Datomic API: transact, q, pull, datoms, entity, history, tx, sync
 - EDN/Datomic semantics
-- Transit JSON HTTP media type: `application/transit+json`
+- JSON HTTP media type: `application/json`
 
 Tier 2:
 
@@ -47,32 +51,36 @@ They are interoperability surfaces, not independent sources of truth.
 (require '[transit.core :as transit])
 
 (transit/write-json {:db/id 1 :user/name "Ada"})
-;; => {"~:db/id" 1, "~:user/name" "Ada"} as a JSON-compatible value
+;; => {"db/id" 1, "user/name" "Ada"} as a plain JSON-compatible value
 
 (transit/datomic-envelope {:graph "people"
                            :query-edn "[:find ?e :where [?e :user/name \"Ada\"]]"})
-;; => {:content-type "application/transit+json"
-;;     :accept "application/transit+json"
+;; => {:content-type "application/json"
+;;     :accept "application/json"
 ;;     :body {"graph" "people", "query_edn" "..."}}
+
+;; opt into gzip once the body crosses transit.core/default-gzip-threshold-bytes
+(transit/datomic-envelope {:graph "people"} {:gzip? true})
+;; => adds :content-encoding "gzip" — the host still does the actual compression
 ```
 
 ## Design
 
-This repo intentionally starts as a small CLJC surface:
+This repo intentionally stays a small CLJC surface:
 
-- `write-json`: EDN values to Transit JSON compatible values.
-- `read-json`: Transit JSON compatible values back to EDN values.
+- `write-json`: EDN values to plain JSON-compatible values (no tags).
 - `datomic-envelope`: standard HTTP envelope metadata for Kotoba Datomic APIs.
-- `office-envelope`: standard Transit envelope for Slides, Sheets, Docs, and
-  related app resources.
-
-The next layer can add binary Transit MessagePack and streaming readers without
-changing callers.
+- `office-envelope` / `read-office-envelope-body`: standard JSON envelope for
+  Slides, Sheets, Docs, and related app resources. The handful of
+  keyword-typed discriminant fields (protocol family, resource kind,
+  operation kind) are recovered explicitly on read; the payload itself
+  round-trips as plain JSON data, not the original EDN shape.
 
 ## Host boundary
 
-`transit.core/write-json` returns JSON-compatible data. A host is responsible
-only for turning that data into bytes and adding HTTP headers:
+`transit.core/write-json` returns plain JSON-compatible data. A host is
+responsible only for turning that data into bytes, gzip-compressing it when
+`:content-encoding "gzip"` is present, and adding HTTP headers:
 
 ```clojure
 {:content-type transit.core/media-type-json
@@ -81,8 +89,8 @@ only for turning that data into bytes and adding HTTP headers:
 ```
 
 Rust, JavaScript, JVM, or future Kotoba-native hosts can all perform that byte
-encoding, but they should not redefine tags, envelope keys, tiering, or Datomic
-semantics.
+encoding, but they should not invent new tag schemes, envelope keys, tiering,
+or Datomic semantics.
 
 ## Test
 
