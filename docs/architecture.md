@@ -25,6 +25,7 @@ office-family resource kinds include:
 - `:slides/deck`
 - `:sheets/workbook`
 - `:docs/document`
+- `:forms/form`
 - `:office/update`
 - `:office/selection`
 - `:office/presence`

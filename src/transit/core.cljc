@@ -22,9 +22,17 @@
 (def office-family :kotoba.protocol/office)
 (def office-envelope-version 1)
 (def office-resource-kinds
+  "The resource kinds an office envelope may carry.
+
+  A closed set, because the discriminant is what the reader keys on: an
+  envelope whose kind nothing recognises is one that arrives, parses, and
+  then has nowhere to go. `kotoba-lang/forms` was the case that showed the
+  cost of leaving one out — its model had no wire namespace at all, and the
+  reason turned out to be here rather than there."
   #{:slides/deck
     :sheets/workbook
     :docs/document
+    :forms/form
     :office/update
     :office/selection
     :office/presence})
