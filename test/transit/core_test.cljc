@@ -56,6 +56,12 @@
          (:content-encoding
           (transit/office-envelope :slides/deck {} {:gzip? true})))))
 
+(deftest office-envelope-carries-a-form
+  (let [envelope (transit/office-envelope :forms/form {:forms/id "contact"})
+        decoded (transit/read-office-envelope-body (:body envelope))]
+    (is (= :forms/form (:kotoba.resource/kind decoded)))
+    (is (= {"forms/id" "contact"} (:kotoba.resource/payload decoded)))))
+
 (deftest office-envelope-rejects-unknown-resource-kind
   (is (thrown? #?(:clj clojure.lang.ExceptionInfo
                   :cljs cljs.core.ExceptionInfo)
