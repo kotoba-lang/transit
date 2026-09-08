@@ -13,7 +13,7 @@
   Callers that must recover a keyword-typed field (e.g. a resource-kind
   discriminant) do so explicitly, because they already know the shape of
   the envelope they are reading."
-  (:require [clojure.string :as str]))
+  (:require [kotoba.lang.text :as str]))
 
 (def media-type-json "application/json")
 (def gzip-encoding "gzip")
@@ -43,12 +43,12 @@
              (str/split #";")
              first
              str/trim
-             str/lower-case)))
+             str/lower)))
 
 (defn accepts-json? [accept]
   (boolean
    (some #(= media-type-json
-             (-> % (str/split #";") first str/trim str/lower-case))
+             (-> % (str/split #";") first str/trim str/lower))
          (str/split (or accept "") #","))))
 
 (defn- write-key [k]
