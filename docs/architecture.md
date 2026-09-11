@@ -12,7 +12,7 @@ produces are plain JSON, not Transit.
 
 The authority boundary is CLJC source in this repository:
 
-- `src/transit/core.cljc` defines the media type and EDN-to-plain-JSON shapes.
+- `src/transit/core.cljk` defines the media type and EDN-to-plain-JSON shapes.
 - Tests in `test/transit` pin Datomic and app-resource envelope shapes.
 - Host runtimes may encode/decode bytes and gzip-compress bodies, but
   envelope semantics remain here.
