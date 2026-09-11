@@ -95,5 +95,5 @@ or Datomic semantics.
 ## Test
 
 ```bash
-clojure -M:test
+kbb -M:test
 ```
